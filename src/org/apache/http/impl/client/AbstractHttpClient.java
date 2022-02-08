@@ -68,6 +68,10 @@ import org.apache.http.protocol.HttpContext;
 import org.apache.http.protocol.HttpProcessor;
 import org.apache.http.protocol.HttpRequestExecutor;
 
+// CTA Feature @{
+import org.apache.http.cta.CtaUtils;
+// @}
+
 /**
  * Convenience base class for HTTP client implementations.
  *
@@ -557,6 +561,12 @@ public abstract class AbstractHttpClient implements HttpClient {
         }
 
         try {
+            // CTA Feature check mms @{
+            if (!CtaUtils.isCtaGrantSending(request, defaultParams)) {
+                System.out.println("Fail to send mms for no permission");
+                return CtaUtils.deniedHttpResponse();
+            }
+            //@}
             return director.execute(target, request, execContext);
         } catch(HttpException httpException) {
             throw new ClientProtocolException(httpException);

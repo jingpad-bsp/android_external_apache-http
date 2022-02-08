@@ -36,6 +36,7 @@ import org.apache.http.conn.scheme.Scheme;
 import org.apache.http.conn.scheme.SchemeRegistry;
 import org.apache.http.entity.AbstractHttpEntity;
 import org.apache.http.entity.ByteArrayEntity;
+import org.apache.http.HttpStatus;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.client.RequestWrapper;
 import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
@@ -63,6 +64,13 @@ import java.net.URI;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
+import org.apache.http.message.BasicHttpResponse;
+import org.apache.http.ProtocolVersion;
+
+import android.os.SystemProperties;
+
+import android.os.Binder;
+
 /**
  * Implementation of the Apache {@link DefaultHttpClient} that is configured with
  * reasonable default settings and registered schemes for Android.
@@ -83,7 +91,11 @@ public final class AndroidHttpClient implements HttpClient {
 
     private static final String TAG = "AndroidHttpClient";
 
-    private static String[] textContentTypes = new String[] {
+    private static final int IMMS_OPERATION_ID = 20;
+
+    private static final String SECURE_SELECTED = "service.project.sec";
+
+    private static String[] textContentTypes = new String[]{
             "text/",
             "application/xml",
             "application/json"
@@ -246,46 +258,104 @@ public final class AndroidHttpClient implements HttpClient {
         return delegate.getConnectionManager();
     }
 
+    /**
+     * @hide
+     */
+    public int doJudge() {
+        int userId = Binder.getCallingUid();
+        Log.e(TAG, "newInstance userId " + userId);
+        String userAgent = HttpProtocolParams.getUserAgent(getParams());
+        boolean isMMS = false;
+        int allow = 0;
+        if (userAgent != null) {
+            isMMS = userAgent.toLowerCase().contains("mms");
+        }
+        if (isMMS == true) {
+            allow = Binder.dojudge(userId, "imms", IMMS_OPERATION_ID, 0, null);
+        }
+        return allow;
+    }
+
     public HttpResponse execute(HttpUriRequest request) throws IOException {
+        if (SystemProperties.get(SECURE_SELECTED).equals("1")) {
+            if (doJudge() < 0) {
+                return new BasicHttpResponse(new ProtocolVersion("http", 1, 1), HttpStatus.SC_GATEWAY_TIMEOUT, "timeout");
+            }
+        }
         return delegate.execute(request);
     }
 
     public HttpResponse execute(HttpUriRequest request, HttpContext context)
             throws IOException {
+        if (SystemProperties.get(SECURE_SELECTED).equals("1")) {
+            if (doJudge() < 0) {
+                return new BasicHttpResponse(new ProtocolVersion("http", 1, 1), HttpStatus.SC_GATEWAY_TIMEOUT, "timeout");
+            }
+        }
         return delegate.execute(request, context);
     }
 
     public HttpResponse execute(HttpHost target, HttpRequest request)
             throws IOException {
+        if (SystemProperties.get(SECURE_SELECTED).equals("1")) {
+            if (doJudge() < 0) {
+                return new BasicHttpResponse(new ProtocolVersion("http", 1, 1), HttpStatus.SC_GATEWAY_TIMEOUT, "timeout");
+            }
+        }
         return delegate.execute(target, request);
     }
 
     public HttpResponse execute(HttpHost target, HttpRequest request,
-            HttpContext context) throws IOException {
+                                HttpContext context) throws IOException {
+        if (SystemProperties.get(SECURE_SELECTED).equals("1")) {
+            if (doJudge() < 0) {
+                return new BasicHttpResponse(new ProtocolVersion("http", 1, 1), HttpStatus.SC_GATEWAY_TIMEOUT, "timeout");
+            }
+        }
         return delegate.execute(target, request, context);
     }
 
     public <T> T execute(HttpUriRequest request,
-            ResponseHandler<? extends T> responseHandler)
+                         ResponseHandler<? extends T> responseHandler)
             throws IOException, ClientProtocolException {
+        if (SystemProperties.get(SECURE_SELECTED).equals("1")) {
+            if (doJudge() < 0) {
+                throw new ClientProtocolException("sec judge fail");
+            }
+        }
         return delegate.execute(request, responseHandler);
     }
 
     public <T> T execute(HttpUriRequest request,
-            ResponseHandler<? extends T> responseHandler, HttpContext context)
+                         ResponseHandler<? extends T> responseHandler, HttpContext context)
             throws IOException, ClientProtocolException {
+        if (SystemProperties.get(SECURE_SELECTED).equals("1")) {
+            if (doJudge() < 0) {
+                throw new ClientProtocolException("sec judge fail");
+            }
+        }
         return delegate.execute(request, responseHandler, context);
     }
 
     public <T> T execute(HttpHost target, HttpRequest request,
-            ResponseHandler<? extends T> responseHandler) throws IOException,
+                         ResponseHandler<? extends T> responseHandler) throws IOException,
             ClientProtocolException {
+        if (SystemProperties.get(SECURE_SELECTED).equals("1")) {
+            if (doJudge() < 0) {
+                throw new ClientProtocolException("sec judge fail");
+            }
+        }
         return delegate.execute(target, request, responseHandler);
     }
 
     public <T> T execute(HttpHost target, HttpRequest request,
-            ResponseHandler<? extends T> responseHandler, HttpContext context)
+                         ResponseHandler<? extends T> responseHandler, HttpContext context)
             throws IOException, ClientProtocolException {
+        if (SystemProperties.get("SECURE_SELECTED").equals("1")) {
+            if (doJudge() < 0) {
+                throw new ClientProtocolException("sec judge fail");
+            }
+        }
         return delegate.execute(target, request, responseHandler, context);
     }
 
